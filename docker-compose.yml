@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: market-research-mongo
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - market-research-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: market-research-backend
+    ports:
+      - '5000:5000'
+    depends_on:
+      - mongodb
+    environment:
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/market-research
+      JWT_SECRET: your-super-secret-jwt-key-change-this
+      NODE_ENV: development
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: us-east-1
+      AWS_BUCKET_NAME: market-research-hub
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - market-research-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: market-research-frontend
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:5000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - market-research-network
+
+volumes:
+  mongo_data:
+    driver: local
+
+networks:
+  market-research-network:
+    driver: bridge
